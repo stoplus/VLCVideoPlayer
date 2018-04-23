@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">VLC-Video-Player</string>
+    <string name="find">Найти...</string>
+    <string name="title">Video Title</string>
+    <string name="time">00:00:00</string>
+    <string name="PermissionsRationale">Для получения списка видеофайлов необходимо получить разрешения</string>
+    <string name="ok">Хорошо</string>
+    <string name="no">Не хочу</string>
+    <string name="needPermis">Необходимо получить разрешения!!!</string>
+    <string name="needPermission">Получите разрешения!!!</string>
+</resources>
