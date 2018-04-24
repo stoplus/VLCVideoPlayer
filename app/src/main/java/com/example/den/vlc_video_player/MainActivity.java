@@ -52,10 +52,10 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     private List<String> list;
     private List<String> listName;
     //    private org.videolan.libvlc.media.VideoView videoView;
-    private TextView txt_ct, txt_td;
+    private TextView txt_ct, txt_td, txt_title;
     private SeekBar seekBar;
     private Handler threadHandler = new Handler();
-    private int timeDuration;
+    private int timeDuration = 0;
     private int curPosition;
     //    private Resources  res = this.getResources();//доступ к ресерсам;
     private static final int REQUEST_PERMITIONS = 1100;
@@ -82,7 +82,6 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     private View decorView;
     private View view;
     private int immersiveOptions;
-    private TextView txt_title;
     private DialogPlayList dialogPlayList;
     // size of the video
     private int mVideoHeight;
@@ -119,6 +118,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
             list = savedInstanceState.getStringArrayList("list");
             listName = savedInstanceState.getStringArrayList("listName");
             curPosition = savedInstanceState.getInt("curPosition");
+            timeDuration = savedInstanceState.getInt("timeDuration");
             flagStartPlay = savedInstanceState.getBoolean("flagStartPlay");
             flagSavedInstanceState = true;
 
@@ -182,49 +182,14 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                UpdateSeekBar updateSeekBar = new UpdateSeekBar();
-                threadHandler.postDelayed(updateSeekBar, 50);
-                threadHandler.postDelayed(hideControls, 3000);
+                if (flagStartPlay) {//если играл
+                    threadHandler.postDelayed(updateSeekBar, 50);
+                }
+                threadHandler.postDelayed(hideControls, 3500);
                 controlsState = ControlsMode.FULLCONTORLS;
             }
         }
     }
-
-    private void instalVidget() {
-        txt_title = findViewById(R.id.txt_title);
-        btn_back = findViewById(R.id.btn_back);
-        btn_play = findViewById(R.id.btn_play);
-        btn_pause = findViewById(R.id.btn_pause);
-        btn_fwd = findViewById(R.id.btn_fwd);
-        btn_rev = findViewById(R.id.btn_rev);
-        btn_prev = findViewById(R.id.btn_prev);
-        btn_next = findViewById(R.id.btn_next);
-        btn_stop = findViewById(R.id.btn_stop);
-        btn_settings = findViewById(R.id.btn_settings);
-        txt_ct = findViewById(R.id.txt_currentTime);
-        txt_td = findViewById(R.id.txt_totalDuration);
-        seekBar = findViewById(R.id.seekbar);
-
-        root = findViewById(R.id.root);
-        root.setVisibility(View.VISIBLE);
-        LinearLayout seekbar_time = findViewById(R.id.seekbar_time);
-        seekbar_time.setVisibility(View.VISIBLE);
-        LinearLayout top = findViewById(R.id.top);
-        top.setVisibility(View.VISIBLE);
-        LinearLayout bottom_controls = findViewById(R.id.controls);
-        bottom_controls.setVisibility(View.VISIBLE);
-
-        immersiveOptions = (View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                | View.SYSTEM_UI_FLAG_LOW_PROFILE
-                | View.SYSTEM_UI_FLAG_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        );
-        decorView = getWindow().getDecorView();
-        decorView.setSystemUiVisibility(immersiveOptions);
-    }//instalVidget
 
     private void initializationButtons() {
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -259,6 +224,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                             flagStartPlay = true;
                             changePlayToPause(true);
                             mMediaPlayer.play();
+                            mMediaPlayer.setTime(curPosition);
                         }
                     }
                 });
@@ -345,42 +311,73 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         btn_play.setVisibility(flag ? View.GONE : View.VISIBLE);
     }//changePausePlay
 
-    //========================================================================================
+
+    //==================================================================================================================
     @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_UP:
-                showControls();
-                break;
-        }
-        return super.onTouchEvent(event);
+    public void onNewLayout(IVLCVout vlcVout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
+
     }
 
-    private void hideAllControls() {
-        if (controlsState == ControlsMode.FULLCONTORLS) {
-            if (root.getVisibility() == View.VISIBLE) {
-                root.setVisibility(View.GONE);
-            }
-        } else if (controlsState == ControlsMode.LOCK) {
-            if (unlock_panel.getVisibility() == View.VISIBLE) {
-                unlock_panel.setVisibility(View.GONE);
-            }
+    @Override
+    public void onSurfacesCreated(IVLCVout vlcVout) {
+        setTimeWidget();
+        if (flagStartPlay) {//если играл
+            mMediaPlayer.play(); // начинаем воспроизведение автоматически
+            mMediaPlayer.setTime(curPosition);//устанавливаем с какого времени начать воспроизведение
+        } else {//был на паузе
+            mMediaPlayer.setTime(curPosition);//устанавливаем с какого времени начать воспроизведение
+            changePlayToPause(false);
         }
-        decorView.setSystemUiVisibility(immersiveOptions);
     }
 
-    private void showControls() {
-        if (controlsState == ControlsMode.FULLCONTORLS) {
-            if (root.getVisibility() == View.GONE) {
-                root.setVisibility(View.VISIBLE);
-            }
-        } else if (controlsState == ControlsMode.LOCK) {
-            if (unlock_panel.getVisibility() == View.GONE) {
-                unlock_panel.setVisibility(View.VISIBLE);
+    @Override
+    public void onSurfacesDestroyed(IVLCVout vlcVout) {
+        Log.d("kkk", "jjj");
+    }
+
+    @Override
+    public void onHardwareAccelerationError(IVLCVout vlcVout) {
+        Log.d("kkk", "jjj");
+    }
+
+    private MediaPlayer.EventListener mPlayerListener = new MyPlayerListener(this);
+
+    private static class MyPlayerListener implements MediaPlayer.EventListener {
+        private WeakReference<MainActivity> mOwner;
+
+        public MyPlayerListener(MainActivity owner) {
+            mOwner = new WeakReference<MainActivity>(owner);
+        }
+
+        @Override
+        public void onEvent(MediaPlayer.Event event) {
+            MainActivity player = mOwner.get();
+
+            switch (event.type) {
+                case MediaPlayer.Event.EndReached:
+                    player.changePlayToPause(false);
+                    player.mMediaPlayer.stop();
+                    player.threadHandler.removeCallbacks(player.updateSeekBar);
+                    player.curPosition = 0;
+                    player.setTimeWidget();
+                    break;
+                case MediaPlayer.Event.Playing:
+                    player.timeDuration = (int) player.mMediaPlayer.getLength();
+                    player.setTimeWidget();
+                    player.threadHandler.postDelayed(player.updateSeekBar, 50);
+                    player.changePlayToPause(true);
+                    break;
+                case MediaPlayer.Event.Paused:
+                    player.threadHandler.removeCallbacks(player.updateSeekBar);
+                    player.changePlayToPause(false);
+                    break;
+                case MediaPlayer.Event.Stopped:
+                    player.threadHandler.removeCallbacks(player.updateSeekBar);
+                    break;
+                default:
+                    break;
             }
         }
-        threadHandler.removeCallbacks(hideControls);
-        threadHandler.postDelayed(hideControls, 3000);
     }
 
     // ==============================================================================================
@@ -396,6 +393,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         vout.detachViews();
         mLibVLC.release();
         mLibVLC = null;
+        threadHandler.removeCallbacks(updateSeekBar);
     }
 
     @Override
@@ -409,21 +407,24 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     }
 
     public void setTimeWidget() {
-        timeDuration = (int) mMediaPlayer.getLength();
-        String time = millisecondsToString(timeDuration);
-        txt_td.setText(time);
-        seekBar.setMax(timeDuration);
-        txt_title.setText(listName.get(curTrackIndex));
+        if (timeDuration > 0) {
+            String time = millisecondsToString(timeDuration);
+            txt_td.setText(time);
+            seekBar.setMax(timeDuration);
+            txt_title.setText(listName.get(curTrackIndex));
+            txt_ct.setText(millisecondsToString(curPosition));
+            seekBar.setProgress(curPosition);
+        }
     }
 
-    class UpdateSeekBar implements Runnable {
+    private Runnable updateSeekBar = new Runnable() {
         public void run() {
             curPosition = (int) mMediaPlayer.getTime();
             txt_ct.setText(millisecondsToString(curPosition));
             seekBar.setProgress(curPosition);
-            threadHandler.postDelayed(this, 200);
+            threadHandler.postDelayed(this, 50);
         }
-    }
+    };
 
     private String millisecondsToString(int milliseconds) {
         long hours = TimeUnit.MILLISECONDS.toHours(milliseconds);
@@ -436,6 +437,43 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         } else return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 
+    private void instalVidget() {
+        txt_title = findViewById(R.id.txt_title);
+        btn_back = findViewById(R.id.btn_back);
+        btn_play = findViewById(R.id.btn_play);
+        btn_pause = findViewById(R.id.btn_pause);
+        btn_fwd = findViewById(R.id.btn_fwd);
+        btn_rev = findViewById(R.id.btn_rev);
+        btn_prev = findViewById(R.id.btn_prev);
+        btn_next = findViewById(R.id.btn_next);
+        btn_stop = findViewById(R.id.btn_stop);
+        btn_settings = findViewById(R.id.btn_settings);
+        txt_ct = findViewById(R.id.txt_currentTime);
+        txt_td = findViewById(R.id.txt_totalDuration);
+        seekBar = findViewById(R.id.seekbar);
+
+        root = findViewById(R.id.root);
+        root.setVisibility(View.VISIBLE);
+        LinearLayout seekbar_time = findViewById(R.id.seekbar_time);
+        seekbar_time.setVisibility(View.VISIBLE);
+        LinearLayout top = findViewById(R.id.top);
+        top.setVisibility(View.VISIBLE);
+        LinearLayout bottom_controls = findViewById(R.id.controls);
+        bottom_controls.setVisibility(View.VISIBLE);
+
+        immersiveOptions = (View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LOW_PROFILE
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        );
+        decorView = getWindow().getDecorView();
+        decorView.setSystemUiVisibility(immersiveOptions);
+    }//instalVidget
+
+    //===========================================================================
     @NeedsPermission({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
     void getListVodeo() {
         layoutButtonPermiss = findViewById(R.id.idLayoutButtonPermiss);
@@ -470,17 +508,6 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         initializationButtons();
     }
 
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putInt("curTrackIndex", curTrackIndex);
-        outState.putStringArrayList("list", (ArrayList<String>) list);
-        outState.putStringArrayList("listName", (ArrayList<String>) listName);
-        outState.putInt("curPosition", curPosition);
-        outState.putBoolean("flagStartPlay", flagStartPlay);
-    }
-
-    //===========================================================================
     @OnPermissionDenied({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
     void permissionsDenied() {
         Snackbar.make(view, "Нельзя запустить плеер без разрешений!", Snackbar.LENGTH_LONG).show();
@@ -520,71 +547,60 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         MainActivityPermissionsDispatcher.onRequestPermissionsResult(this, requestCode, grantResults);
     }
 
-    //==================================================================================================================
+    //========================================================================================
     @Override
-    public void onNewLayout(IVLCVout vlcVout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
-
-    }
-
-    @Override
-    public void onSurfacesCreated(IVLCVout vlcVout) {
-        if (flagStartPlay) {//если играл
-            mMediaPlayer.play(); // начинаем воспроизведение автоматически
-            mMediaPlayer.setTime(curPosition);//устанавливаем с какого времени начать воспроизведение
-        } else {//был на паузе
-            mMediaPlayer.setTime(curPosition);//устанавливаем с какого времени начать воспроизведение
-            changePlayToPause(false);
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_UP:
+                showControls();
+                break;
         }
+        return super.onTouchEvent(event);
     }
 
-    @Override
-    public void onSurfacesDestroyed(IVLCVout vlcVout) {
-        Log.d("kkk", "jjj");
-    }
-
-    @Override
-    public void onHardwareAccelerationError(IVLCVout vlcVout) {
-        Log.d("kkk", "jjj");
-    }
-
-    private MediaPlayer.EventListener mPlayerListener = new MyPlayerListener(this);
-
-    private static class MyPlayerListener implements MediaPlayer.EventListener {
-        private WeakReference<MainActivity> mOwner;
-
-        public MyPlayerListener(MainActivity owner) {
-            mOwner = new WeakReference<MainActivity>(owner);
-        }
-
-        @Override
-        public void onEvent(MediaPlayer.Event event) {
-            MainActivity player = mOwner.get();
-
-            switch (event.type) {
-                case MediaPlayer.Event.EndReached:
-                    player.changePlayToPause(false);
-                    player.mMediaPlayer.stop();
-                    break;
-                case MediaPlayer.Event.Playing:
-                    player.setTimeWidget();
-                    player.changePlayToPause(true);
-                    break;
-                case MediaPlayer.Event.Paused:
-                    Log.d("kkk", "jjj");
-                    player.changePlayToPause(false);
-                    break;
-                case MediaPlayer.Event.Stopped:
-                    Log.d("kkk", "jjj");
-                    break;
-                default:
-                    break;
+    private void hideAllControls() {
+        if (controlsState == ControlsMode.FULLCONTORLS) {
+            if (root.getVisibility() == View.VISIBLE) {
+                root.setVisibility(View.GONE);
+            }
+        } else if (controlsState == ControlsMode.LOCK) {
+            if (unlock_panel.getVisibility() == View.VISIBLE) {
+                unlock_panel.setVisibility(View.GONE);
             }
         }
+        decorView.setSystemUiVisibility(immersiveOptions);
+    }
+
+    private void showControls() {
+        if (controlsState == ControlsMode.FULLCONTORLS) {
+            if (root.getVisibility() == View.GONE) {
+                root.setVisibility(View.VISIBLE);
+            }
+        } else if (controlsState == ControlsMode.LOCK) {
+            if (unlock_panel.getVisibility() == View.GONE) {
+                unlock_panel.setVisibility(View.VISIBLE);
+            }
+        }
+        threadHandler.removeCallbacks(hideControls);
+        threadHandler.postDelayed(hideControls, 3000);
+    }
+
+    //===========================================================================
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("curTrackIndex", curTrackIndex);
+        outState.putInt("timeDuration", timeDuration);
+        outState.putStringArrayList("list", (ArrayList<String>) list);
+        outState.putStringArrayList("listName", (ArrayList<String>) listName);
+        outState.putInt("curPosition", curPosition);
+        outState.putBoolean("flagStartPlay", flagStartPlay);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         releasePlayer();
+        threadHandler.removeCallbacks(updateSeekBar);
     }//onDestroy
 }
