@@ -3,10 +3,12 @@ package com.example.den.vlc_video_player;
 import android.Manifest;
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.database.Cursor;
 //import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
+import android.os.Message;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
@@ -20,6 +22,7 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -183,7 +186,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                     e.printStackTrace();
                 }
                 if (flagStartPlay) {//если играл
-                    threadHandler.postDelayed(updateSeekBar, 50);
+                    //threadHandler.post(updateSeekBar);
                 }
                 threadHandler.postDelayed(hideControls, 3500);
                 controlsState = ControlsMode.FULLCONTORLS;
@@ -203,7 +206,8 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                mMediaPlayer.setTime(seekBar.getProgress());
+                curPosition = seekBar.getProgress();
+                changeCurPosition();
             }
         });
         btn_back.setOnClickListener(
@@ -243,14 +247,20 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        mMediaPlayer.setTime(curPosition + 5000);
+                        if ((curPosition + 5000) < mMediaPlayer.getLength()) {
+                            curPosition += 5000;
+                            changeCurPosition();
+                        }
                     }
                 });
         btn_rev.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        mMediaPlayer.setTime(curPosition - 5000);
+                        if ((curPosition - 5000) > 0) {
+                            curPosition -= 5000;
+                            changeCurPosition();
+                        }
                     }
                 });
         btn_prev.setOnClickListener(
@@ -314,8 +324,15 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
 
     //==================================================================================================================
     @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        setSize(mVideoWidth, mVideoHeight);
+    }
+    //==================================================================================================================
+    @Override
     public void onNewLayout(IVLCVout vlcVout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
-
+        Message msg = Message.obtain(mHandler, VideoSizeChanged, width, height);
+        msg.sendToTarget();
     }
 
     @Override
@@ -325,7 +342,6 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
             mMediaPlayer.play(); // начинаем воспроизведение автоматически
             mMediaPlayer.setTime(curPosition);//устанавливаем с какого времени начать воспроизведение
         } else {//был на паузе
-            mMediaPlayer.setTime(curPosition);//устанавливаем с какого времени начать воспроизведение
             changePlayToPause(false);
         }
     }
@@ -340,13 +356,25 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         Log.d("kkk", "jjj");
     }
 
+    //=================================================================================================
     private MediaPlayer.EventListener mPlayerListener = new MyPlayerListener(this);
+    private Handler mHandler = new MyPlayerListener(this);
 
-    private static class MyPlayerListener implements MediaPlayer.EventListener {
+    private static class MyPlayerListener extends Handler implements MediaPlayer.EventListener {
         private WeakReference<MainActivity> mOwner;
 
         public MyPlayerListener(MainActivity owner) {
             mOwner = new WeakReference<MainActivity>(owner);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            MainActivity player = mOwner.get();
+
+            // SamplePlayer events
+            if (msg.what == VideoSizeChanged) {
+                player.setSize(msg.arg1, msg.arg2);
+            }
         }
 
         @Override
@@ -364,7 +392,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                 case MediaPlayer.Event.Playing:
                     player.timeDuration = (int) player.mMediaPlayer.getLength();
                     player.setTimeWidget();
-                    player.threadHandler.postDelayed(player.updateSeekBar, 50);
+                    player.threadHandler.post(player.updateSeekBar);
                     player.changePlayToPause(true);
                     break;
                 case MediaPlayer.Event.Paused:
@@ -394,6 +422,8 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         mLibVLC.release();
         mLibVLC = null;
         threadHandler.removeCallbacks(updateSeekBar);
+        mVideoWidth = 0;
+        mVideoHeight = 0;
     }
 
     @Override
@@ -417,12 +447,18 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         }
     }
 
+    private void changeCurPosition(){
+        mMediaPlayer.setTime(curPosition);
+        txt_ct.setText(millisecondsToString(curPosition));
+        seekBar.setProgress(curPosition);
+    }
+
     private Runnable updateSeekBar = new Runnable() {
         public void run() {
-            curPosition = (int) mMediaPlayer.getTime();
             txt_ct.setText(millisecondsToString(curPosition));
             seekBar.setProgress(curPosition);
-            threadHandler.postDelayed(this, 50);
+            curPosition += 200;
+            threadHandler.postDelayed(this, 200);
         }
     };
 
@@ -472,6 +508,44 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         decorView = getWindow().getDecorView();
         decorView.setSystemUiVisibility(immersiveOptions);
     }//instalVidget
+
+    private void setSize(int width, int height) {
+        mVideoWidth = width;
+        mVideoHeight = height;
+        if (mVideoWidth * mVideoHeight <= 1)
+            return;
+
+        // get screen size
+        int w = getWindow().getDecorView().getWidth();
+        int h = getWindow().getDecorView().getHeight();
+
+        // getWindow().getDecorView() doesn't always take orientation into
+        // account, we have to correct the values
+        boolean isPortrait = getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
+        if (w > h && isPortrait || w < h && !isPortrait) {
+            int i = w;
+            w = h;
+            h = i;
+        }
+
+        float videoAR = (float) mVideoWidth / (float) mVideoHeight;
+        float screenAR = (float) w / (float) h;
+
+        if (screenAR < videoAR)
+            h = (int) (w / videoAR);
+        else
+            w = (int) (h * videoAR);
+
+        // force surface buffer size
+        mSurfaceHolder.setFixedSize(mVideoWidth, mVideoHeight);
+
+        // set display size
+        ViewGroup.LayoutParams lp = mSurfaceView.getLayoutParams();
+        lp.width = w;
+        lp.height = h;
+        mSurfaceView.setLayoutParams(lp);
+        mSurfaceView.invalidate();
+    }
 
     //===========================================================================
     @NeedsPermission({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})

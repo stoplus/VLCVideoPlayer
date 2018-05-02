@@ -2,44 +2,30 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:tools="http://schemas.android.com/tools"
     android:background="#000000">
 
-    <!--<org.videolan.libvlc.media.VideoView-->
-    <!--android:id="@+id/idVideoView"-->
-    <!--android:layout_width="match_parent"-->
-    <!--android:layout_height="wrap_content"-->
-    <!--android:layout_centerInParent="true" />-->
-    <SurfaceView
-        android:id="@+id/surface"
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:layout_gravity="center" />
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="false">
 
-    <!--<FrameLayout-->
-    <!--android:layout_width="match_parent"-->
-    <!--android:layout_height="match_parent"-->
-    <!--android:fitsSystemWindows="false">-->
+        <FrameLayout
+            android:id="@+id/player_surface_frame"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:foregroundGravity="clip_horizontal|clip_vertical"
+            tools:ignore="true">
 
-    <!--<FrameLayout-->
-    <!--android:id="@+id/player_surface_frame"-->
-    <!--android:layout_width="wrap_content"-->
-    <!--android:layout_height="wrap_content"-->
-    <!--android:layout_gravity="center"-->
-    <!--android:foregroundGravity="clip_horizontal|clip_vertical"-->
-    <!--&gt;-->
+            <SurfaceView
+                android:id="@+id/surface"
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:layout_gravity="center" />
 
-    <!--<SurfaceView-->
-    <!--android:id="@+id/surface"-->
-    <!--android:layout_width="fill_parent"-->
-    <!--android:layout_height="fill_parent"-->
-    <!--android:layout_gravity="center" />-->
-
-    <!--&lt;!&ndash;<android.opengl.GLSurfaceView&ndash;&gt;-->
-    <!--&lt;!&ndash;android:id="@+id/gl_view"&ndash;&gt;-->
-    <!--&lt;!&ndash;android:layout_width="480dp"&ndash;&gt;-->
-    <!--&lt;!&ndash;android:layout_height="360dp" />&ndash;&gt;-->
-    <!--</FrameLayout>-->
-    <!--</FrameLayout>-->
+        </FrameLayout>
+    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/root"
