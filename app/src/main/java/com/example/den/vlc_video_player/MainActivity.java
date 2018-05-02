@@ -23,6 +23,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -507,6 +508,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         );
         decorView = getWindow().getDecorView();
         decorView.setSystemUiVisibility(immersiveOptions);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);//устанавливаем флаг на запрет отключения экрана
     }//instalVidget
 
     private void setSize(int width, int height) {
@@ -676,5 +678,6 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         super.onDestroy();
         releasePlayer();
         threadHandler.removeCallbacks(updateSeekBar);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);//удаляем флаг на запрет отключения экрана
     }//onDestroy
 }
