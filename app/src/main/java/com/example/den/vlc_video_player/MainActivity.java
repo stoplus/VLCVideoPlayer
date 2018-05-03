@@ -32,6 +32,7 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -88,6 +89,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     private LinearLayout top_controls;
     private LinearLayout middle_panel;
     private LinearLayout unlock_panel;
+    private LinearLayout volume_slider_container;
     private RelativeLayout layoutButtonPermiss;
     private View decorView;
     private View view;
@@ -102,6 +104,9 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     private LibVLC mLibVLC;
     private org.videolan.libvlc.MediaPlayer mMediaPlayer;
     private Surface mSurface;
+    private boolean flagOnTouchEvent = false;
+    private float x;
+    private float y;
 
 
     public enum ControlsMode {
@@ -178,7 +183,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
 //                        MainActivity activity = (MainActivity) getLastNonConfigurationInstance();
 //                        mMediaPlayer = activity.mMediaPlayer;
 //                    } else {
-                        mMediaPlayer = new MediaPlayer(mLibVLC);
+                    mMediaPlayer = new MediaPlayer(mLibVLC);
 //                    }
                     mMediaPlayer.setEventListener(mPlayerListener);
                     //set videoSource
@@ -508,6 +513,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
 
         root = findViewById(R.id.root);
         root.setVisibility(View.VISIBLE);
+        volume_slider_container = findViewById(R.id.volume_slider_container);
         LinearLayout seekbar_time = findViewById(R.id.seekbar_time);
         seekbar_time.setVisibility(View.VISIBLE);
         LinearLayout top = findViewById(R.id.top);
@@ -645,9 +651,31 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         switch (event.getAction()) {
-            case MotionEvent.ACTION_UP:
-                showControls();
+            case MotionEvent.ACTION_DOWN:
+                if (!flagOnTouchEvent) {
+                    showControls();
+                } else hideAllControls();
+                x = event.getX();
+                y = event.getY();
                 break;
+            case MotionEvent.ACTION_UP:
+                volume_slider_container.setVisibility(View.GONE);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                float xMove = event.getX();
+                float yMove = event.getY();
+                float xxx = Math.abs(x - xMove);
+                float yyy = Math.abs(y - yMove);
+                if (yyy > 10) {
+                    volume_slider_container.setVisibility(View.VISIBLE);
+                    ProgressBar volume_slider = findViewById(R.id.volume_slider);
+                    int progress = (int) (yyy / 2);
+                    if (progress > 100) progress = 100;
+                    volume_slider.setProgress(progress);
+                    mMediaPlayer.setVolume(progress);
+                }
+                break;
+
         }
         return super.onTouchEvent(event);
     }
@@ -663,6 +691,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
             }
         }
         decorView.setSystemUiVisibility(immersiveOptions);
+        flagOnTouchEvent = false;
     }
 
     private void showControls() {
@@ -677,6 +706,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         }
         threadHandler.removeCallbacks(hideControls);
         threadHandler.postDelayed(hideControls, 3000);
+        flagOnTouchEvent = true;
     }
 
     //===========================================================================
