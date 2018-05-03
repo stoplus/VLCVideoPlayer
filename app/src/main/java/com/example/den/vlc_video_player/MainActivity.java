@@ -3,9 +3,14 @@ package com.example.den.vlc_video_player;
 import android.Manifest;
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.database.Cursor;
 //import android.media.MediaPlayer;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
@@ -36,13 +41,14 @@ import android.widget.Toast;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 import org.videolan.libvlc.IVLCVout;
 import org.videolan.libvlc.LibVLC;
 import org.videolan.libvlc.Media;
 import org.videolan.libvlc.MediaPlayer;
-import org.videolan.libvlc.media.VideoView;
 
 import permissions.dispatcher.NeedsPermission;
 import permissions.dispatcher.OnNeverAskAgain;
@@ -97,6 +103,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     private org.videolan.libvlc.MediaPlayer mMediaPlayer;
     private Surface mSurface;
 
+
     public enum ControlsMode {
         LOCK, FULLCONTORLS
     }
@@ -145,7 +152,6 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     }//onCreate
 
     private void installVideo() {
-
         if (list != null) {
             if (list.size() != 0) {
                 releasePlayer();
@@ -168,7 +174,12 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                     options.add("--audio-time-stretch"); // time stretching
                     mLibVLC = new LibVLC(getApplicationContext(), options);
                     // Create media player
-                    mMediaPlayer = new MediaPlayer(mLibVLC);
+//                    if (flagSavedInstanceState) {
+//                        MainActivity activity = (MainActivity) getLastNonConfigurationInstance();
+//                        mMediaPlayer = activity.mMediaPlayer;
+//                    } else {
+                        mMediaPlayer = new MediaPlayer(mLibVLC);
+//                    }
                     mMediaPlayer.setEventListener(mPlayerListener);
                     //set videoSource
                     String videoSource = list.get(curTrackIndex);
@@ -216,7 +227,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                     @Override
                     public void onClick(View view) {
                         if (list != null) {
-                            mMediaPlayer.stop();//mMediaPlayer = null
+                            mMediaPlayer.stop();
                         }
                         finish();
                     }
@@ -329,6 +340,12 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         super.onConfigurationChanged(newConfig);
         setSize(mVideoWidth, mVideoHeight);
     }
+
+    @Override
+    public Object onRetainCustomNonConfigurationInstance() {
+        return MainActivity.this;
+    }
+
     //==================================================================================================================
     @Override
     public void onNewLayout(IVLCVout vlcVout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
@@ -448,7 +465,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         }
     }
 
-    private void changeCurPosition(){
+    private void changeCurPosition() {
         mMediaPlayer.setTime(curPosition);
         txt_ct.setText(millisecondsToString(curPosition));
         seekBar.setProgress(curPosition);
@@ -509,6 +526,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         decorView = getWindow().getDecorView();
         decorView.setSystemUiVisibility(immersiveOptions);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);//устанавливаем флаг на запрет отключения экрана
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);//поворот при выключенном разрешениии
     }//instalVidget
 
     private void setSize(int width, int height) {
