@@ -2,15 +2,14 @@ package com.example.den.vlc_video_player;
 
 import android.Manifest;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.database.Cursor;
 //import android.media.MediaPlayer;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
@@ -42,8 +41,7 @@ import android.widget.Toast;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import org.videolan.libvlc.IVLCVout;
@@ -90,6 +88,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     private LinearLayout middle_panel;
     private LinearLayout unlock_panel;
     private LinearLayout volume_slider_container;
+    private LinearLayout brightness_slider_container;
     private RelativeLayout layoutButtonPermiss;
     private View decorView;
     private View view;
@@ -105,9 +104,20 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     private org.videolan.libvlc.MediaPlayer mMediaPlayer;
     private Surface mSurface;
     private boolean flagOnTouchEvent = false;
-    private float x;
-    private float y;
-
+    private float xTouch;
+    private float yTouch;
+    ProgressBar volume_slider;
+    ProgressBar brightness_slider;
+    AudioManager audioManager;
+    int maxVolume;
+    int currentVolume;
+    int MULTIPLICITY_OF_VOLUME_TO_PROGRESSBAR = 10;
+    double MULTIPLICITY_OF_BRIGHTNESS_TO_PROGRESSBAR = 100.0;
+    WindowManager.LayoutParams layout;
+    double currentBrightness;
+    double saveBrightness;
+    private String APP_PREFERENCES = "appSettings";
+    private SharedPreferences mSettings;
 
     public enum ControlsMode {
         LOCK, FULLCONTORLS
@@ -149,8 +159,16 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                 installVideo();
                 initializationButtons();
             }
-        } else
+        } else {
+            mSettings = getSharedPreferences(APP_PREFERENCES, Context.MODE_PRIVATE);
+            layout = getWindow().getAttributes();
+            currentBrightness = setCurrentBrightness();
+            layout.screenBrightness = (float) currentBrightness;
+            getWindow().setAttributes(layout);
+
             MainActivityPermissionsDispatcher.getListVodeoWithPermissionCheck(this);//install after running
+        }
+
         if (dialogPlayList != null && !dialogPlayList.isVisible()) {
             flagStartPlay = true;
         }
@@ -228,107 +246,80 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
             }
         });
         btn_back.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        if (list != null) {
-                            mMediaPlayer.stop();
-                        }
-                        finish();
+                view -> {
+                    if (list != null) {
+                        mMediaPlayer.stop();
                     }
+                    finish();
                 });
         btn_play.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        if (!mMediaPlayer.isPlaying()) {
-                            flagStartPlay = true;
-                            changePlayToPause(true);
-                            mMediaPlayer.play();
-                            mMediaPlayer.setTime(curPosition);
-                        }
+                view -> {
+                    if (!mMediaPlayer.isPlaying()) {
+                        flagStartPlay = true;
+                        changePlayToPause(true);
+                        mMediaPlayer.play();
+                        mMediaPlayer.setTime(curPosition);
                     }
                 });
         btn_pause.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        if (mMediaPlayer.isPlaying()) {
-                            flagStartPlay = false;
-                            changePlayToPause(false);
-                            mMediaPlayer.pause();
-                        }
+                view -> {
+                    if (mMediaPlayer.isPlaying()) {
+                        flagStartPlay = false;
+                        changePlayToPause(false);
+                        mMediaPlayer.pause();
                     }
                 });
         btn_fwd.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        if ((curPosition + 5000) < mMediaPlayer.getLength()) {
-                            curPosition += 5000;
-                            changeCurPosition();
-                        }
+                view -> {
+                    if ((curPosition + 5000) < mMediaPlayer.getLength()) {
+                        curPosition += 5000;
+                        changeCurPosition();
                     }
                 });
         btn_rev.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        if ((curPosition - 5000) > 0) {
-                            curPosition -= 5000;
-                            changeCurPosition();
-                        }
+                view -> {
+                    if ((curPosition - 5000) > 0) {
+                        curPosition -= 5000;
+                        changeCurPosition();
                     }
                 });
         btn_prev.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        if (curTrackIndex != 0) {
-                            curTrackIndex -= 1;
-                            curPosition = 0;
-                            installVideo();
-                        } else installVideo();
-                        changePlayToPause(true);
-                        mMediaPlayer.play();
-                    }
+                view -> {
+                    if (curTrackIndex != 0) {
+                        curTrackIndex -= 1;
+                        curPosition = 0;
+                        installVideo();
+                    } else installVideo();
+                    changePlayToPause(true);
+                    mMediaPlayer.play();
                 });
         btn_next.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        if (curTrackIndex != list.size() - 1) {
-                            curTrackIndex += 1;
-                            curPosition = 0;
-                            installVideo();
-                        } else installVideo();
-                        changePlayToPause(true);
-                        mMediaPlayer.play();
-                    }
+                view -> {
+                    if (curTrackIndex != list.size() - 1) {
+                        curTrackIndex += 1;
+                        curPosition = 0;
+                        installVideo();
+                    } else installVideo();
+                    changePlayToPause(true);
+                    mMediaPlayer.play();
                 });
         btn_stop.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        mMediaPlayer.stop();//mMediaPlayer = null
-                        changePlayToPause(false);
-                    }
+                view -> {
+                    mMediaPlayer.stop();//mMediaPlayer = null
+                    changePlayToPause(false);
                 });
         btn_settings.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        dialogPlayList = new DialogPlayList();
-                        Bundle args = new Bundle();//создаем Bundle для передачи в диалог информации
-                        args.putStringArrayList("listName", (ArrayList<String>) listName);
-                        dialogPlayList.setArguments(args);//показать данные в диалоге
-                        dialogPlayList.show(getSupportFragmentManager(), "dialogPlayList");// отображение диалогового окна в фрагменте
-                        if (mMediaPlayer.isPlaying()) {
-                            changePlayToPause(false);
-                            mMediaPlayer.pause();
-                            flagStartPlay = false;
-                            curPosition = (int) mMediaPlayer.getTime();
-                        }
+                view -> {
+                    dialogPlayList = new DialogPlayList();
+                    Bundle args = new Bundle();//создаем Bundle для передачи в диалог информации
+                    args.putStringArrayList("listName", (ArrayList<String>) listName);
+                    dialogPlayList.setArguments(args);//показать данные в диалоге
+                    dialogPlayList.show(getSupportFragmentManager(), "dialogPlayList");// отображение диалогового окна в фрагменте
+                    if (mMediaPlayer.isPlaying()) {
+                        changePlayToPause(false);
+                        mMediaPlayer.pause();
+                        flagStartPlay = false;
+                        curPosition = (int) mMediaPlayer.getTime();
                     }
                 });
     }//initializationButtons
@@ -514,6 +505,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         root = findViewById(R.id.root);
         root.setVisibility(View.VISIBLE);
         volume_slider_container = findViewById(R.id.volume_slider_container);
+        brightness_slider_container = findViewById(R.id.brightness_slider_container);
         LinearLayout seekbar_time = findViewById(R.id.seekbar_time);
         seekbar_time.setVisibility(View.VISIBLE);
         LinearLayout top = findViewById(R.id.top);
@@ -534,6 +526,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);//устанавливаем флаг на запрет отключения экрана
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);//поворот при выключенном разрешениии
     }//instalVidget
+
 
     private void setSize(int width, int height) {
         mVideoWidth = width;
@@ -572,6 +565,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         mSurfaceView.setLayoutParams(lp);
         mSurfaceView.invalidate();
     }
+
 
     //===========================================================================
     @NeedsPermission({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
@@ -655,30 +649,86 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                 if (!flagOnTouchEvent) {
                     showControls();
                 } else hideAllControls();
-                x = event.getX();
-                y = event.getY();
+                xTouch = event.getX();
+                yTouch = event.getY();
+                //получаем текущую громкость устройства
+                audioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
+                currentVolume = Objects.requireNonNull(audioManager).getStreamVolume(AudioManager.STREAM_MUSIC);
+
+                currentBrightness = setCurrentBrightness();
+
+                Log.d("ddd", "currentBrightness = " + currentBrightness);
                 break;
             case MotionEvent.ACTION_UP:
                 volume_slider_container.setVisibility(View.GONE);
+                brightness_slider_container.setVisibility(View.GONE);
+
+                //сохраняем данные яркости в настройки
+                SharedPreferences.Editor editor = mSettings.edit();
+                editor.putFloat("saveBrightness", (float) saveBrightness);
+                editor.apply();
                 break;
             case MotionEvent.ACTION_MOVE:
-                float xMove = event.getX();
                 float yMove = event.getY();
-                float xxx = Math.abs(x - xMove);
-                float yyy = Math.abs(y - yMove);
-                if (yyy > 10) {
-                    volume_slider_container.setVisibility(View.VISIBLE);
-                    ProgressBar volume_slider = findViewById(R.id.volume_slider);
-                    int progress = (int) (yyy / 2);
-                    if (progress > 100) progress = 100;
-                    volume_slider.setProgress(progress);
-                    mMediaPlayer.setVolume(progress);
-                }
-                break;
+                float difference = (yTouch - yMove);
+//                setVolume(difference);
 
-        }
+                setBrightness(difference);
+                break;
+        }//switch
         return super.onTouchEvent(event);
+    }//onTouchEvent
+
+
+    private void setBrightness(float difference) {
+        if (Math.abs(difference) > 10) {
+            if (brightness_slider == null) {
+                brightness_slider = findViewById(R.id.brightness_slider);
+            }//if
+            brightness_slider_container.setVisibility(View.VISIBLE);
+            //устанавливаем текущюю яркость в прогресбаре
+            brightness_slider.setProgress((int) (currentBrightness * 100.0));
+            //расчитываем на сколько увеличиваем яркость
+            int progressScreen = (int) (difference / 10);
+            //устанавливаем значение в ProgressBar
+            brightness_slider.setProgress((int) (currentBrightness * 100.0 + progressScreen));
+            saveBrightness = (float) (brightness_slider.getProgress() / 100.0);
+            layout.screenBrightness = (float) saveBrightness;
+            getWindow().setAttributes(layout);
+        }//if
     }
+
+
+    private void setVolume(float difference) {
+        if (Math.abs(difference) > MULTIPLICITY_OF_VOLUME_TO_PROGRESSBAR) {
+            if (volume_slider == null) {
+                volume_slider = findViewById(R.id.volume_slider);
+
+                //получаем максимальную громкость устройства
+                maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                //устанавливаем макс. деление гормкости в прогресбаре
+                volume_slider.setMax(maxVolume * MULTIPLICITY_OF_VOLUME_TO_PROGRESSBAR);
+            }//if
+            volume_slider_container.setVisibility(View.VISIBLE);
+            //устанавливаем текущюю громкость в прогресбаре
+            volume_slider.setProgress(currentVolume * MULTIPLICITY_OF_VOLUME_TO_PROGRESSBAR);
+            //расчитываем на сколько увеличиваем громкость
+            int progressScreen = (int) (difference / MULTIPLICITY_OF_VOLUME_TO_PROGRESSBAR);
+            //устанавливаем значение в ProgressBar
+            volume_slider.setProgress(currentVolume * MULTIPLICITY_OF_VOLUME_TO_PROGRESSBAR + progressScreen);
+            int new_volume = volume_slider.getProgress() / MULTIPLICITY_OF_VOLUME_TO_PROGRESSBAR;
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, new_volume, 0);
+        }//if
+    }
+
+
+    private double setCurrentBrightness() {
+        if (mSettings.contains("saveBrightness")) {
+            currentBrightness = mSettings.getFloat("saveBrightness", 0.5f);
+        } else currentBrightness = 0.5f;//присваиваем сохраненные данные
+        return currentBrightness;
+    }
+
 
     private void hideAllControls() {
         if (controlsState == ControlsMode.FULLCONTORLS) {

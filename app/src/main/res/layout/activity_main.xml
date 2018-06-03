@@ -387,8 +387,6 @@
             android:layout_marginLeft="0dp"
             android:layout_marginRight="0dp"
             android:layout_marginTop="0dp"
-            android:max="100"
-            android:progress="33"
             android:progressDrawable="@drawable/hplib_verticalbar_design_volume"
             android:visibility="visible" />
     </LinearLayout>
@@ -419,7 +417,6 @@
             android:layout_marginRight="0dp"
             android:layout_marginTop="0dp"
             android:max="100"
-            android:progress="33"
             android:progressDrawable="@drawable/hplib_verticalbar_design_brightness"
             android:visibility="visible" />
     </LinearLayout>
@@ -476,7 +473,7 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_centerHorizontal="true"
-        android:gravity="center"
+        android:gravity="right"
         android:orientation="horizontal"
         android:visibility="gone">
 
