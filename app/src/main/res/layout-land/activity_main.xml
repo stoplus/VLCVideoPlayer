@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:tools="http://schemas.android.com/tools"
@@ -87,12 +88,10 @@
         <LinearLayout
             android:id="@+id/middle"
             android:layout_width="fill_parent"
-            android:layout_height="fill_parent"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:orientation="horizontal"
-            android:visibility="visible">
-
-        </LinearLayout>
+            android:orientation="vertical"
+            android:visibility="visible"></LinearLayout>
 
 
         <LinearLayout
@@ -112,13 +111,13 @@
                 android:paddingLeft="20dp"
                 android:paddingRight="10dp"
                 android:paddingTop="10dp"
-                android:text="00:00:00"
+                android:text="@string/time"
                 android:textAppearance="?android:attr/textAppearanceSmall"
                 android:textColor="#FFF" />
 
             <SeekBar
                 android:id="@+id/seekbar"
-                android:layout_width="fill_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:layout_weight="1" />
@@ -142,7 +141,7 @@
                 android:paddingLeft="10dp"
                 android:paddingRight="20dp"
                 android:paddingTop="10dp"
-                android:text="00:00:00"
+                android:text="@string/time"
                 android:textAppearance="?android:attr/textAppearanceSmall"
                 android:textColor="#FFF" />
 
@@ -158,7 +157,7 @@
             android:visibility="gone">
 
             <!--<ImageButton-->
-            <!--android:id="@+id/id_btn_lock"-->
+            <!--android:id="@+id/btn_lock"-->
             <!--android:layout_width="32dp"-->
             <!--android:layout_height="32dp"-->
             <!--android:layout_gravity="right"-->
@@ -168,7 +167,7 @@
             <!--android:src="@drawable/hplib_ic_lock" />-->
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:layout_marginLeft="20dp"
@@ -222,7 +221,7 @@
                 <ImageButton
                     android:id="@+id/btn_stop"
                     android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_height="25dp"
                     android:layout_gravity="center"
                     android:layout_marginRight="24dp"
                     android:layout_weight="1"
@@ -237,8 +236,7 @@
                     android:layout_marginRight="24dp"
                     android:layout_weight="1"
                     android:background="@null"
-                    android:src="@drawable/hplib_ic_forward"
-                    android:text="+30s" />
+                    android:src="@drawable/hplib_ic_forward" />
 
                 <ImageButton
                     android:id="@+id/btn_next"
@@ -343,8 +341,7 @@
                 android:layout_gravity="center"
                 android:layout_marginRight="20dp"
                 android:background="@null"
-                android:src="@drawable/hblib_ic_play_list"
-                android:text="Settings" />
+                android:src="@drawable/hblib_ic_play_list" />
 
 
         </LinearLayout>
@@ -353,7 +350,7 @@
     </LinearLayout>
 
     <RelativeLayout
-        android:id="@+id/id_loadingVPanel"
+        android:id="@+id/loadingVPanel"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="center"
@@ -367,9 +364,10 @@
     </RelativeLayout>
 
     <LinearLayout
-        android:id="@+id/id_volume_slider_container"
+        android:id="@+id/volume_slider_container"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
+        android:layout_alignParentEnd="true"
         android:layout_marginBottom="100dp"
         android:layout_marginTop="100dp"
         android:gravity="center"
@@ -377,13 +375,13 @@
         android:visibility="gone">
 
         <ImageView
-            android:id="@+id/id_volIcon"
+            android:id="@+id/volIcon"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/hplib_volume" />
 
         <ProgressBar
-            android:id="@+id/id_volume_slider"
+            android:id="@+id/volume_slider"
             style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="10dp"
             android:layout_height="match_parent"
@@ -391,14 +389,12 @@
             android:layout_marginLeft="0dp"
             android:layout_marginRight="0dp"
             android:layout_marginTop="0dp"
-            android:max="100"
-            android:progress="33"
             android:progressDrawable="@drawable/hplib_verticalbar_design_volume"
             android:visibility="visible" />
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/id_brightness_slider_container"
+        android:id="@+id/brightness_slider_container"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_marginBottom="100dp"
@@ -408,13 +404,13 @@
         android:visibility="gone">
 
         <ImageView
-            android:id="@+id/id_brightnessIcon"
+            android:id="@+id/brightnessIcon"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/hplib_brightness_medium" />
 
         <ProgressBar
-            android:id="@+id/id_brightness_slider"
+            android:id="@+id/brightness_slider"
             style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="10dp"
             android:layout_height="match_parent"
@@ -423,13 +419,12 @@
             android:layout_marginRight="0dp"
             android:layout_marginTop="0dp"
             android:max="100"
-            android:progress="33"
             android:progressDrawable="@drawable/hplib_verticalbar_design_brightness"
             android:visibility="visible" />
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/id_unlock_panel"
+        android:id="@+id/unlock_panel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="10dp"
@@ -441,7 +436,7 @@
         android:visibility="gone">
 
         <ImageButton
-            android:id="@+id/id_btn_unlock"
+            android:id="@+id/btn_unlock"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -451,7 +446,7 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/id_vol_center_text"
+        android:id="@+id/vol_center_text"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_centerHorizontal="true"
@@ -460,13 +455,13 @@
         android:visibility="gone">
 
         <ImageView
-            android:id="@+id/id_vol_image"
+            android:id="@+id/vol_image"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:src="@drawable/hplib_volume" />
 
         <TextView
-            android:id="@+id/id_vol_perc_center_text"
+            android:id="@+id/vol_perc_center_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text=" 22"
@@ -476,22 +471,22 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/id_brightness_center_text"
+        android:id="@+id/brightness_center_text"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_centerHorizontal="true"
-        android:gravity="center"
+        android:gravity="right"
         android:orientation="horizontal"
         android:visibility="gone">
 
         <ImageView
-            android:id="@+id/id_brightness_image"
+            android:id="@+id/brightness_image"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:src="@drawable/hplib_brightness_minimum" />
 
         <TextView
-            android:id="@+id/id_brigtness_perc_center_text"
+            android:id="@+id/brigtness_perc_center_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text=" 22"
@@ -501,7 +496,7 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/id_seekbar_center_text"
+        android:id="@+id/seekbar_center_text"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_centerHorizontal="true"
@@ -510,7 +505,7 @@
         android:visibility="gone">
 
         <TextView
-            android:id="@+id/txt_seek_curTime"
+            android:id="@+id/txt_seek_currTime"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="00:44"
@@ -519,7 +514,7 @@
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/txt_seek_seconds"
+            android:id="@+id/txt_seek_secs"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="[ +00:10 ]"
@@ -530,3 +525,4 @@
     </LinearLayout>
 
 </RelativeLayout>
+

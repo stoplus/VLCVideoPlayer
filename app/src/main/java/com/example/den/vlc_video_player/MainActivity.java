@@ -20,6 +20,7 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.Surface;
@@ -118,6 +119,8 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     double saveBrightness;
     private String APP_PREFERENCES = "appSettings";
     private SharedPreferences mSettings;
+    int maxWidthPix;
+    int maxHeightPix;
 
     public enum ControlsMode {
         LOCK, FULLCONTORLS
@@ -160,7 +163,6 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                 initializationButtons();
             }
         } else {
-            mSettings = getSharedPreferences(APP_PREFERENCES, Context.MODE_PRIVATE);
             layout = getWindow().getAttributes();
             currentBrightness = setCurrentBrightness();
             layout.screenBrightness = (float) currentBrightness;
@@ -651,13 +653,16 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                 } else hideAllControls();
                 xTouch = event.getX();
                 yTouch = event.getY();
+                DisplayMetrics displayMetrics = this.getResources()
+                        .getDisplayMetrics();
+                //определяем ширину и высоту дисплея
+                maxWidthPix = displayMetrics.widthPixels;
+                maxHeightPix = displayMetrics.heightPixels;
                 //получаем текущую громкость устройства
                 audioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
                 currentVolume = Objects.requireNonNull(audioManager).getStreamVolume(AudioManager.STREAM_MUSIC);
 
                 currentBrightness = setCurrentBrightness();
-
-                Log.d("ddd", "currentBrightness = " + currentBrightness);
                 break;
             case MotionEvent.ACTION_UP:
                 volume_slider_container.setVisibility(View.GONE);
@@ -670,10 +675,12 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                 break;
             case MotionEvent.ACTION_MOVE:
                 float yMove = event.getY();
+                float xMove = event.getX();
                 float difference = (yTouch - yMove);
-//                setVolume(difference);
-
-                setBrightness(difference);
+                Log.d("sss", "xMove: " + xMove);
+                if (xTouch > maxWidthPix / 2) {
+                    setVolume(difference);
+                } else setBrightness(difference);
                 break;
         }//switch
         return super.onTouchEvent(event);
@@ -713,7 +720,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
             //устанавливаем текущюю громкость в прогресбаре
             volume_slider.setProgress(currentVolume * MULTIPLICITY_OF_VOLUME_TO_PROGRESSBAR);
             //расчитываем на сколько увеличиваем громкость
-            int progressScreen = (int) (difference / MULTIPLICITY_OF_VOLUME_TO_PROGRESSBAR);
+            int progressScreen = (int) (difference / 6);
             //устанавливаем значение в ProgressBar
             volume_slider.setProgress(currentVolume * MULTIPLICITY_OF_VOLUME_TO_PROGRESSBAR + progressScreen);
             int new_volume = volume_slider.getProgress() / MULTIPLICITY_OF_VOLUME_TO_PROGRESSBAR;
@@ -723,9 +730,11 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
 
 
     private double setCurrentBrightness() {
+        if (mSettings == null)
+            mSettings = getSharedPreferences(APP_PREFERENCES, Context.MODE_PRIVATE);
         if (mSettings.contains("saveBrightness")) {
             currentBrightness = mSettings.getFloat("saveBrightness", 0.5f);
-        } else currentBrightness = 0.5f;//присваиваем сохраненные данные
+        } else currentBrightness = 0.5f;//присваиваем дефолтные данные
         return currentBrightness;
     }
 
