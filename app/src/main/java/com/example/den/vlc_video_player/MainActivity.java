@@ -1,43 +1,35 @@
 package com.example.den.vlc_video_player;
 
-import android.Manifest;
-import android.content.ContentResolver;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
-import android.database.Cursor;
-//import android.media.MediaPlayer;
+import android.content.res.Resources;
+import android.graphics.Point;
 import android.media.AudioManager;
-import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.provider.MediaStore;
-import android.provider.Settings;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
+import android.view.KeyCharacterMap;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.Toast;
-//import android.widget.VideoView;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -50,18 +42,9 @@ import org.videolan.libvlc.LibVLC;
 import org.videolan.libvlc.Media;
 import org.videolan.libvlc.MediaPlayer;
 
-import permissions.dispatcher.NeedsPermission;
-import permissions.dispatcher.OnNeverAskAgain;
-import permissions.dispatcher.OnPermissionDenied;
-import permissions.dispatcher.OnShowRationale;
-import permissions.dispatcher.PermissionRequest;
-import permissions.dispatcher.RuntimePermissions;
-
-@RuntimePermissions
-public class MainActivity extends AppCompatActivity implements SelectedVideoInterface, IVLCVout.Callback {
+public class MainActivity extends AppCompatActivity implements IVLCVout.Callback {
     private List<String> list;
     private List<String> listName;
-    //    private org.videolan.libvlc.media.VideoView videoView;
     private TextView txt_ct, txt_td, txt_title;
     private SeekBar seekBar;
     private Handler threadHandler = new Handler();
@@ -75,10 +58,8 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     private ImageButton btn_rev;
     private ImageButton btn_next;
     private ImageButton btn_prev;
-    private ImageButton btn_stop;
     private ImageButton btn_settings;
     private ImageButton btn_back;
-    private Button buttonPermis;
     private int curTrackIndex;
     private boolean flagStartPlay = true;
     private boolean flagSavedInstanceState = false;
@@ -90,11 +71,9 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     private LinearLayout unlock_panel;
     private LinearLayout volume_slider_container;
     private LinearLayout brightness_slider_container;
-    private RelativeLayout layoutButtonPermiss;
     private View decorView;
     private View view;
     private int immersiveOptions;
-    private DialogPlayList dialogPlayList;
     // size of the video
     private int mVideoHeight;
     private int mVideoWidth;
@@ -121,6 +100,8 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
     private SharedPreferences mSettings;
     int maxWidthPix;
     int maxHeightPix;
+    String name;
+    String path;
 
     public enum ControlsMode {
         LOCK, FULLCONTORLS
@@ -132,49 +113,32 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         view = getLayoutInflater().inflate(R.layout.activity_main, null);
         setContentView(view);
 
-        buttonPermis = findViewById(R.id.idButtonPermission);
-        layoutButtonPermiss = findViewById(R.id.idLayoutButtonPermiss);
-        buttonPermis.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //install after running
-                MainActivityPermissionsDispatcher.getListVodeoWithPermissionCheck(MainActivity.this);
-            }
-        });
+        curTrackIndex = Objects.requireNonNull(getIntent().getExtras()).getInt("position");
+        list = getIntent().getExtras().getStringArrayList("listPath");
+        listName = getIntent().getExtras().getStringArrayList("listName");
+        name = getIntent().getStringExtra("name");
+        path = getIntent().getStringExtra("path");
 
-        if (savedInstanceState != null) {
-            curTrackIndex = savedInstanceState.getInt("curTrackIndex");
-            list = savedInstanceState.getStringArrayList("list");
-            listName = savedInstanceState.getStringArrayList("listName");
-            curPosition = savedInstanceState.getInt("curPosition");
-            timeDuration = savedInstanceState.getInt("timeDuration");
-            flagStartPlay = savedInstanceState.getBoolean("flagStartPlay");
-            flagSavedInstanceState = true;
-
-            if (list == null) {
-                Snackbar.make(view, "Нельзя запустить плеер без разрешений!", Snackbar.LENGTH_LONG).show();
-            } else if (list.size() == 0) {
-                buttonPermis.setVisibility(View.GONE);
-                Snackbar.make(view, "На устройстве отсутствует видео файлы", Snackbar.LENGTH_LONG).show();
-            } else {
-                layoutButtonPermiss.setVisibility(View.GONE);
-                instalVidget();
-                installVideo();
-                initializationButtons();
-            }
-        } else {
-            layout = getWindow().getAttributes();
-            currentBrightness = setCurrentBrightness();
-            layout.screenBrightness = (float) currentBrightness;
-            getWindow().setAttributes(layout);
-
-            MainActivityPermissionsDispatcher.getListVodeoWithPermissionCheck(this);//install after running
-        }
-
-        if (dialogPlayList != null && !dialogPlayList.isVisible()) {
-            flagStartPlay = true;
-        }
+        layout = getWindow().getAttributes();
+        currentBrightness = setCurrentBrightness();
+        layout.screenBrightness = (float) currentBrightness;
+        getWindow().setAttributes(layout);
+        start();
     }//onCreate
+
+
+    private void start() {
+        instalVidget();
+
+        curTrackIndex = 0;
+        installVideo();
+
+        if (flagSavedInstanceState) {
+            mMediaPlayer.setTime(curPosition);
+        }
+        initializationButtons();
+    }
+
 
     private void installVideo() {
         if (list != null) {
@@ -199,16 +163,11 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                     options.add("--audio-time-stretch"); // time stretching
                     mLibVLC = new LibVLC(getApplicationContext(), options);
                     // Create media player
-//                    if (flagSavedInstanceState) {
-//                        MainActivity activity = (MainActivity) getLastNonConfigurationInstance();
-//                        mMediaPlayer = activity.mMediaPlayer;
-//                    } else {
                     mMediaPlayer = new MediaPlayer(mLibVLC);
-//                    }
                     mMediaPlayer.setEventListener(mPlayerListener);
                     //set videoSource
-                    String videoSource = list.get(curTrackIndex);
-                    Media m = new Media(mLibVLC, videoSource);
+//                    String videoSource = list.get(curTrackIndex);
+                    Media m = new Media(mLibVLC, path);
                     mMediaPlayer.setMedia(m);
                     // Set up video output
                     mSurfaceView = findViewById(R.id.surface);
@@ -222,9 +181,9 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                if (flagStartPlay) {//если играл
-                    //threadHandler.post(updateSeekBar);
-                }
+//                if (flagStartPlay) {//если играл
+//                    //threadHandler.post(updateSeekBar);
+//                }
                 threadHandler.postDelayed(hideControls, 3500);
                 controlsState = ControlsMode.FULLCONTORLS;
             }
@@ -305,26 +264,19 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                     changePlayToPause(true);
                     mMediaPlayer.play();
                 });
-        btn_stop.setOnClickListener(
-                view -> {
-                    mMediaPlayer.stop();//mMediaPlayer = null
-                    changePlayToPause(false);
-                });
         btn_settings.setOnClickListener(
                 view -> {
-                    dialogPlayList = new DialogPlayList();
-                    Bundle args = new Bundle();//создаем Bundle для передачи в диалог информации
-                    args.putStringArrayList("listName", (ArrayList<String>) listName);
-                    dialogPlayList.setArguments(args);//показать данные в диалоге
-                    dialogPlayList.show(getSupportFragmentManager(), "dialogPlayList");// отображение диалогового окна в фрагменте
                     if (mMediaPlayer.isPlaying()) {
                         changePlayToPause(false);
                         mMediaPlayer.pause();
                         flagStartPlay = false;
                         curPosition = (int) mMediaPlayer.getTime();
                     }
+                    setResult(RESULT_OK);
+                    finish();
                 });
     }//initializationButtons
+
 
     private void changePlayToPause(boolean flag) {
         btn_pause.setVisibility(flag ? View.VISIBLE : View.GONE);
@@ -339,17 +291,20 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         setSize(mVideoWidth, mVideoHeight);
     }
 
+
     @Override
     public Object onRetainCustomNonConfigurationInstance() {
         return MainActivity.this;
     }
-
     //==================================================================================================================
+
+
     @Override
     public void onNewLayout(IVLCVout vlcVout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
         Message msg = Message.obtain(mHandler, VideoSizeChanged, width, height);
         msg.sendToTarget();
     }
+
 
     @Override
     public void onSurfacesCreated(IVLCVout vlcVout) {
@@ -364,12 +319,10 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
 
     @Override
     public void onSurfacesDestroyed(IVLCVout vlcVout) {
-        Log.d("kkk", "jjj");
     }
 
     @Override
     public void onHardwareAccelerationError(IVLCVout vlcVout) {
-        Log.d("kkk", "jjj");
     }
 
     //=================================================================================================
@@ -442,7 +395,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         mVideoHeight = 0;
     }
 
-    @Override
+
     public void selectVideo(int position) {
         flagStartPlay = true;
         curTrackIndex = position;
@@ -498,7 +451,6 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         btn_rev = findViewById(R.id.btn_rev);
         btn_prev = findViewById(R.id.btn_prev);
         btn_next = findViewById(R.id.btn_next);
-        btn_stop = findViewById(R.id.btn_stop);
         btn_settings = findViewById(R.id.btn_settings);
         txt_ct = findViewById(R.id.txt_currentTime);
         txt_td = findViewById(R.id.txt_totalDuration);
@@ -511,23 +463,84 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
         LinearLayout seekbar_time = findViewById(R.id.seekbar_time);
         seekbar_time.setVisibility(View.VISIBLE);
         LinearLayout top = findViewById(R.id.top);
+        top.setPadding(0, getStatusBarHeight(), 0, 0);//устанавливаем отступ на высоту StatusBar
+        if (hasNavBar(this)){//если присутствует NavBar
+            if ( isSystemBarOnBottom(this)){// если NavBar снизу
+                  Log.d("fff", "ddd");
+
+            }else {
+                int rotation =  this.getWindowManager().getDefaultDisplay().getRotation();
+                int reqOr = this.getRequestedOrientation();
+
+                String aVerReleaseStr = Build.VERSION.RELEASE;
+                int dotInd = aVerReleaseStr.indexOf(".");
+                if (dotInd >= 0) {
+                    aVerReleaseStr = aVerReleaseStr.replaceAll("\\.", "");
+                    aVerReleaseStr = new StringBuffer(aVerReleaseStr).insert(dotInd, ".").toString();
+                }
+
+                float androidVer = Float.parseFloat(aVerReleaseStr);
+                if (rotation == 3 && reqOr == 6 && androidVer >= 7.1) {
+                    // buttons are on the left side.
+                    Log.d("fff", "ddd");
+                }else {
+                    Log.d("fff", "ddd");
+                }
+            }
+
+        }
         top.setVisibility(View.VISIBLE);
         LinearLayout bottom_controls = findViewById(R.id.controls);
         bottom_controls.setVisibility(View.VISIBLE);
 
-        immersiveOptions = (View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                | View.SYSTEM_UI_FLAG_LOW_PROFILE
-                | View.SYSTEM_UI_FLAG_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        immersiveOptions = (View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN//появляется фон вверху
+                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE//не понятно
+                | View.SYSTEM_UI_FLAG_LOW_PROFILE//не понятно
+                | View.SYSTEM_UI_FLAG_FULLSCREEN//время и батарея
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION//нижние кнопки
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION ////нижние кнопки не прячутся за кнопками
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY//не понятно
         );
         decorView = getWindow().getDecorView();
-        decorView.setSystemUiVisibility(immersiveOptions);
+
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);//устанавливаем флаг на запрет отключения экрана
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);//поворот при выключенном разрешениии
     }//instalVidget
+
+
+    public int getStatusBarHeight() {
+        int result = 0;
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0)
+            result = getResources().getDimensionPixelSize(resourceId);
+        return result;
+    }
+
+    public static boolean hasNavBar(Context context) {
+        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        Point realPoint = new Point();
+        Display display = wm.getDefaultDisplay();
+        display.getRealSize(realPoint);
+        DisplayMetrics metrics = new DisplayMetrics();
+        wm.getDefaultDisplay().getMetrics(metrics);
+        return metrics.heightPixels + metrics.widthPixels != realPoint.y + realPoint.x;
+    }
+
+    public static boolean isSystemBarOnBottom(Context context) {
+        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        Point realPoint = new Point();
+        Display display = wm.getDefaultDisplay();
+        display.getRealSize(realPoint);
+        DisplayMetrics metrics = new DisplayMetrics();
+        wm.getDefaultDisplay().getMetrics(metrics);
+        Configuration cfg = context.getResources().getConfiguration();
+        boolean canMove = (metrics.widthPixels != metrics.heightPixels &&
+                cfg.smallestScreenWidthDp < 600);
+
+        return (!canMove || metrics.widthPixels < metrics.heightPixels);
+    }
 
 
     private void setSize(int width, int height) {
@@ -537,8 +550,8 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
             return;
 
         // get screen size
-        int w = getWindow().getDecorView().getWidth();
-        int h = getWindow().getDecorView().getHeight();
+        int w = decorView.getWidth();
+        int h = decorView.getHeight();
 
         // getWindow().getDecorView() doesn't always take orientation into
         // account, we have to correct the values
@@ -570,80 +583,7 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
 
 
     //===========================================================================
-    @NeedsPermission({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
-    void getListVodeo() {
-        layoutButtonPermiss = findViewById(R.id.idLayoutButtonPermiss);
-        layoutButtonPermiss.setVisibility(View.GONE);
-        list = new ArrayList<>();
-        listName = new ArrayList<>();
-        ContentResolver contentResolver = getContentResolver();
-        Uri uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
-        Cursor cursor = contentResolver.query(uri, null, null, null, null);
-        if (cursor == null) {
-            Toast.makeText(this, "Ошибка", Toast.LENGTH_LONG).show();
-            return;
-        } else if (!cursor.moveToFirst()) {
-            Snackbar.make(view, "На устройстве отсутствует видео файлы", Snackbar.LENGTH_INDEFINITE).show();
-            return;
-        } else {
-            instalVidget();
-            int dataColumn = cursor.getColumnIndex(MediaStore.Video.Media.DATA);
-            int dataColumnName = cursor.getColumnIndex(MediaStore.Video.Media.DISPLAY_NAME);
-            do {
-                String name = cursor.getString(dataColumnName);
-                if (name != null) listName.add(name);
-                list.add(cursor.getString(dataColumn));
-            } while (cursor.moveToNext());
-        }
-        cursor.close();
-        curTrackIndex = 0;
-        installVideo();
-        if (flagSavedInstanceState) {
-            mMediaPlayer.setTime(curPosition);
-        }
-        initializationButtons();
-    }
 
-    @OnPermissionDenied({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
-    void permissionsDenied() {
-        Snackbar.make(view, "Нельзя запустить плеер без разрешений!", Snackbar.LENGTH_LONG).show();
-    }//permissionsDenied
-
-    @OnNeverAskAgain({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
-    void onNeverAskAgain() {
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("Получите разрешения!")
-                .setMessage("Нельзя запустить плеер без разрешений!")
-                .setPositiveButton("Хорошо", (dialog, which) -> {
-                    Intent intent = new Intent();
-                    intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                    Uri uri = Uri.fromParts("package", getPackageName(), null);
-                    intent.setData(uri);
-                    startActivity(intent);
-                })
-                .setNegativeButton("Не хочу", (dialog, which) -> dialog.dismiss()).create()
-                .show();
-    }
-
-    @OnShowRationale({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
-    void showRationale(final PermissionRequest request) {
-        new AlertDialog.Builder(this)
-                .setTitle("Получите разрешения!")
-                .setMessage("Необходимо получить разрешения для доступа к списку видеофайлов")
-                .setPositiveButton("Хорошо", (dialog, button) -> request.proceed())
-                .setNegativeButton("Не хочу", (dialog, button) -> request.cancel())
-                .show();
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        // NOTE: delegate the permission handling to generated method
-        //install after running
-        MainActivityPermissionsDispatcher.onRequestPermissionsResult(this, requestCode, grantResults);
-    }
-
-    //========================================================================================
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         switch (event.getAction()) {
@@ -763,21 +703,10 @@ public class MainActivity extends AppCompatActivity implements SelectedVideoInte
                 unlock_panel.setVisibility(View.VISIBLE);
             }
         }
+        decorView.setSystemUiVisibility(View.VISIBLE);
         threadHandler.removeCallbacks(hideControls);
         threadHandler.postDelayed(hideControls, 3000);
         flagOnTouchEvent = true;
-    }
-
-    //===========================================================================
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putInt("curTrackIndex", curTrackIndex);
-        outState.putInt("timeDuration", timeDuration);
-        outState.putStringArrayList("list", (ArrayList<String>) list);
-        outState.putStringArrayList("listName", (ArrayList<String>) listName);
-        outState.putInt("curPosition", curPosition);
-        outState.putBoolean("flagStartPlay", flagStartPlay);
     }
 
     @Override
